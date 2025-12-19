@@ -61,18 +61,73 @@ def index() -> str:
     return render_template('index.html', restaurants=restaurants)
 
 
+def _create_error_response(message: str, status_code: int, error_code: str = None) -> Tuple[Response, int]:
+    """
+    표준화된 API 에러 응답을 생성합니다.
+    
+    Args:
+        message: 에러 메시지
+        status_code: HTTP 상태 코드
+        error_code: 에러 코드 (선택사항)
+        
+    Returns:
+        JSON 응답과 상태 코드 튜플
+    """
+    error_response = {
+        "success": False,
+        "error": {
+            "message": message,
+            "code": error_code or f"ERR_{status_code}",
+            "status": status_code
+        }
+    }
+    return jsonify(error_response), status_code
+
+
 @app.route('/api/restaurants')
 def api_restaurants() -> Response:
     """
     REST API: 매장 데이터 반환
     
     Returns:
-        JSON 형식의 매장 데이터 리스트
+        JSON 형식의 매장 데이터 리스트 또는 에러 응답
+        
+    성공 응답 (200):
+        {
+            "success": true,
+            "data": [...],
+            "count": 3
+        }
+        
+    에러 응답 (500):
+        {
+            "success": false,
+            "error": {
+                "message": "데이터를 불러올 수 없습니다.",
+                "code": "ERR_500",
+                "status": 500
+            }
+        }
     """
-    logger.info("API 엔드포인트 요청: /api/restaurants")
-    restaurants = _get_restaurants_data()
-    logger.debug(f"API 응답: {len(restaurants)}개 매장")
-    return jsonify(restaurants)
+    try:
+        logger.info("API 엔드포인트 요청: /api/restaurants")
+        restaurants = _get_restaurants_data()
+        logger.debug(f"API 응답: {len(restaurants)}개 매장")
+        
+        # 표준화된 성공 응답 형식
+        response_data = {
+            "success": True,
+            "data": restaurants,
+            "count": len(restaurants)
+        }
+        return jsonify(response_data), 200
+    except Exception as e:
+        logger.error(f"API 데이터 로드 중 오류 발생: {e}", exc_info=True)
+        return _create_error_response(
+            "데이터를 불러올 수 없습니다.",
+            500,
+            "ERR_DATA_LOAD_FAILED"
+        )
 
 
 @app.route('/images/<path:filename>')
@@ -115,6 +170,25 @@ def not_found(error: NotFound) -> Tuple[str, int]:
     """
     logger.warning(f"404 에러 발생: {error}")
     return render_template('error.html', error_code=404, message='페이지를 찾을 수 없습니다.'), 404
+
+
+@app.errorhandler(400)
+def bad_request(error) -> Tuple[Response, int]:
+    """
+    400 에러 핸들러 (API용)
+    
+    Args:
+        error: BadRequest 예외 객체
+        
+    Returns:
+        JSON 에러 응답과 400 상태 코드
+    """
+    logger.warning(f"400 에러 발생: {error}")
+    return _create_error_response(
+        "잘못된 요청입니다.",
+        400,
+        "ERR_BAD_REQUEST"
+    )
 
 
 @app.errorhandler(500)
