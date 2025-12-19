@@ -19,17 +19,17 @@ from functools import wraps
 from pathlib import Path
 from flask import Flask, render_template, jsonify, send_from_directory, Response
 from werkzeug.exceptions import NotFound, InternalServerError, BadRequest
-from utils.cache import get_cache
-from utils.metrics import get_metrics
 from utils.logger import setup_logger
 from utils.security import validate_file_path
 from utils.constants import (
-    DEFAULT_DATA_PATH,
     ERROR_MESSAGES,
     ERROR_CODES,
     ALLOWED_IMAGE_EXTENSIONS,
     SERVER_CONFIG
 )
+from services.restaurant_service import RestaurantService
+from services.metrics_service import MetricsService
+from services.health_check_service import HealthCheckService
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -38,9 +38,10 @@ logger = setup_logger('restaurant_app', log_file='app.log')
 
 app = Flask(__name__)
 
-# 싱글톤 인스턴스 초기화
-cache = get_cache()
-metrics = get_metrics()
+# 서비스 레이어 초기화 (의존성 주입)
+restaurant_service = RestaurantService()
+metrics_service = MetricsService()
+health_check_service = HealthCheckService(restaurant_service)
 
 
 def _track_request_time(func: F) -> F:
@@ -60,22 +61,12 @@ def _track_request_time(func: F) -> F:
         try:
             response = func(*args, **kwargs)
             elapsed_time = time() - start_time
-            metrics.add_response_time(elapsed_time)
+            metrics_service.add_response_time(elapsed_time)
             return response
         except Exception as e:
-            metrics.increment_error()
+            metrics_service.increment_error()
             raise
     return cast(F, wrapper)
-
-
-def _get_restaurants_data() -> list[dict[str, Any]]:
-    """
-    캐시된 매장 데이터를 반환하거나 로드합니다.
-    
-    Returns:
-        매장 데이터 리스트
-    """
-    return cache.get_data()
 
 
 @app.route('/')
@@ -87,9 +78,9 @@ def index() -> str:
     Returns:
         렌더링된 HTML 템플릿 (Jinja2가 자동으로 XSS 방지)
     """
-    metrics.increment_request()
+    metrics_service.increment_request()
     logger.info("메인 페이지 요청")
-    restaurants = _get_restaurants_data()
+    restaurants = restaurant_service.get_all_restaurants()
     logger.debug(f"메인 페이지 렌더링: {len(restaurants)}개 매장")
     # Jinja2 템플릿은 자동으로 HTML 이스케이프를 수행하므로 XSS 방지됨 (N5.1)
     return render_template('index.html', restaurants=restaurants)
@@ -149,9 +140,9 @@ def api_restaurants() -> Response:
         }
     """
     try:
-        metrics.increment_request()
+        metrics_service.increment_request()
         logger.info("API 엔드포인트 요청: /api/restaurants")
-        restaurants = _get_restaurants_data()
+        restaurants = restaurant_service.get_all_restaurants()
         logger.debug(f"API 응답: {len(restaurants)}개 매장")
         
         # 표준화된 성공 응답 형식
@@ -162,7 +153,7 @@ def api_restaurants() -> Response:
         }
         return jsonify(response_data), 200
     except Exception as e:
-        metrics.increment_error()
+        metrics_service.increment_error()
         logger.error(f"API 데이터 로드 중 오류 발생: {e}", exc_info=True)
         return _create_error_response(
             ERROR_MESSAGES['DATA_LOAD_FAILED'],
@@ -257,44 +248,13 @@ def internal_error(error: InternalServerError) -> Tuple[str, int]:
     Returns:
         렌더링된 에러 페이지와 500 상태 코드
     """
-    metrics.increment_error()
+    metrics_service.increment_error()
     logger.error(f"500 에러 발생: {error}", exc_info=True)
     return render_template(
         'error.html',
         error_code=500,
         message=ERROR_MESSAGES['SERVER_ERROR']
     ), 500
-
-
-def _check_filesystem_health() -> Tuple[str, bool]:
-    """
-    파일 시스템 접근 가능 여부를 확인합니다.
-    
-    Returns:
-        (상태 메시지, 건강 여부) 튜플
-    """
-    try:
-        test_file = Path(DEFAULT_DATA_PATH)
-        if test_file.exists():
-            return "ok", True
-        else:
-            return "warning", False
-    except Exception as e:
-        return f"error: {str(e)}", False
-
-
-def _check_data_load_health() -> Tuple[str, bool, int]:
-    """
-    데이터 로드 가능 여부를 확인합니다.
-    
-    Returns:
-        (상태 메시지, 건강 여부, 데이터 개수) 튜플
-    """
-    try:
-        restaurants = _get_restaurants_data()
-        return "ok", True, len(restaurants)
-    except Exception as e:
-        return f"error: {str(e)}", False, 0
 
 
 @app.route('/health')
@@ -305,34 +265,8 @@ def health_check() -> Tuple[Response, int]:
     Returns:
         JSON 형식의 헬스 체크 응답
     """
-    health_status = {
-        "status": "healthy",
-        "checks": {}
-    }
-    overall_healthy = True
-    
-    # 파일 시스템 접근 가능 여부 확인 (N6.2)
-    fs_status, fs_healthy = _check_filesystem_health()
-    health_status["checks"]["filesystem"] = fs_status
-    if not fs_healthy:
-        overall_healthy = False
-    
-    # 데이터 로드 가능 여부 확인
-    data_status, data_healthy, data_count = _check_data_load_health()
-    health_status["checks"]["data_load"] = data_status
-    if not data_healthy:
-        overall_healthy = False
-    else:
-        health_status["data_count"] = data_count
-    
-    # 메트릭 정보 추가 (N6.1)
-    health_metrics = metrics.get_health_metrics()
-    if health_metrics:
-        health_status["metrics"] = health_metrics
-    
-    status_code = 200 if overall_healthy else 503
-    health_status["status"] = "healthy" if overall_healthy else "degraded"
-    
+    health_metrics = metrics_service.get_health_metrics()
+    health_status, status_code = health_check_service.perform_health_check(health_metrics)
     return jsonify(health_status), status_code
 
 
@@ -344,7 +278,7 @@ def api_metrics() -> Response:
     Returns:
         JSON 형식의 메트릭 정보
     """
-    metrics_data = metrics.get_metrics()
+    metrics_data = metrics_service.get_metrics()
     return jsonify(metrics_data), 200
 
 if __name__ == '__main__':
