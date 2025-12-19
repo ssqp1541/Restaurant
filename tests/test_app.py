@@ -95,11 +95,9 @@ class TestErrorHandlers:
     
     def test_500_error_page(self, client):
         """500 에러 페이지 테스트"""
-        # 500 에러를 발생시키는 라우트가 필요함
-        # 현재는 직접 500 에러를 발생시킬 수 없으므로
-        # 이 테스트는 RED 단계에서 실패할 수 있음
-        # 실제 구현에서는 에러를 발생시키는 테스트 라우트가 필요
-        # RED 단계: 이 테스트는 현재 구현이 없으므로 실패해야 함
-        # 임시로 항상 실패하는 테스트로 작성 (RED 단계 목표 달성)
-        assert False, "500 에러 페이지 테스트는 아직 구현되지 않았습니다"
+        # 500 에러를 발생시키는 테스트 라우트 호출
+        response = client.get('/test-error-500')
+        assert response.status_code == 500
+        # 에러 페이지 템플릿이 렌더링되었는지 확인
+        assert b'500' in response.data or b'error' in response.data.lower() or '오류'.encode('utf-8') in response.data
 

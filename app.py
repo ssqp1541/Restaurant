@@ -24,6 +24,12 @@ def serve_images(filename):
     """이미지 파일 서빙"""
     return send_from_directory('images', filename)
 
+@app.route('/test-error-500')
+def test_error_500():
+    """500 에러 테스트용 라우트"""
+    # 의도적으로 500 에러 발생
+    raise Exception("테스트용 500 에러")
+
 @app.errorhandler(404)
 def not_found(error):
     """404 에러 처리"""

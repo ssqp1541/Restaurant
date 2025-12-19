@@ -46,8 +46,7 @@ class TestDataValidationIntegration:
     
     def test_invalid_data_format_handling(self, client):
         """잘못된 데이터 형식 처리 확인"""
-        # RED 단계: 잘못된 데이터 형식에 대한 처리가 아직 구현되지 않음
-        # 이 테스트는 RED 단계에서 실패해야 함
+        from utils.data_loader import validate_restaurants_data_list
         
         # 잘못된 형식의 데이터 (name 필드 없음)
         invalid_data = [
@@ -57,13 +56,18 @@ class TestDataValidationIntegration:
             }
         ]
         
-        # 현재 구현은 검증을 하지만, 에러 처리가 명확하지 않음
-        # RED 단계: 이 테스트는 실패해야 함
-        assert False, "잘못된 데이터 형식 처리 테스트는 아직 구현되지 않았습니다"
+        # 데이터 검증 수행
+        is_valid, errors = validate_restaurants_data_list(invalid_data)
+        
+        # 검증 실패 확인
+        assert is_valid is False
+        assert len(errors) > 0
+        # 에러 메시지에 필수 필드 누락 정보가 포함되어야 함
+        assert any('name' in error.lower() or '필수' in error for error in errors)
     
     def test_data_validation_failure_error_handling(self):
         """데이터 검증 실패 시 에러 처리 확인"""
-        # RED 단계: 검증 실패 시 에러 처리가 아직 구현되지 않음
+        from utils.data_loader import validate_restaurant_data_with_error
         
         invalid_restaurant = {
             # name 필드 없음
@@ -74,8 +78,11 @@ class TestDataValidationIntegration:
         is_valid = validate_restaurant_data(invalid_restaurant)
         assert is_valid is False
         
-        # RED 단계: 검증 실패 시 적절한 에러 처리가 필요함
-        # 현재는 단순히 False만 반환
-        # 향후 예외 발생 또는 로깅 등이 필요할 수 있음
-        assert False, "데이터 검증 실패 시 에러 처리 테스트는 아직 구현되지 않았습니다"
+        # 상세한 에러 메시지 확인
+        is_valid_with_error, error_msg = validate_restaurant_data_with_error(invalid_restaurant)
+        assert is_valid_with_error is False
+        assert error_msg is not None
+        assert len(error_msg) > 0
+        # 에러 메시지에 필수 필드 정보가 포함되어야 함
+        assert 'name' in error_msg.lower() or '필수' in error_msg
 

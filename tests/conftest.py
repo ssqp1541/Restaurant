@@ -18,6 +18,7 @@ def app():
     """Flask 애플리케이션 픽스처"""
     flask_app.config['TESTING'] = True
     flask_app.config['WTF_CSRF_ENABLED'] = False
+    flask_app.config['PROPAGATE_EXCEPTIONS'] = False  # 에러 핸들러가 작동하도록 설정
     return flask_app
 
 

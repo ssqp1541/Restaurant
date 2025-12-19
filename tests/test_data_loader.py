@@ -113,10 +113,36 @@ class TestSaveRestaurantsData:
     
     def test_save_permission_error(self):
         """권한 오류 처리 확인"""
-        # 읽기 전용 디렉토리나 파일에 대한 테스트
-        # Windows에서는 구현이 복잡하므로 일단 스킵
-        # RED 단계: 이 테스트는 구현되지 않았으므로 실패해야 함
-        assert False, "권한 오류 처리 테스트는 아직 구현되지 않았습니다"
+        # Windows에서는 읽기 전용 파일을 만들어서 테스트
+        import stat
+        
+        test_data = [{"name": "테스트 매장"}]
+        
+        # 임시 파일 생성
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            temp_path = f.name
+        
+        try:
+            # 파일을 읽기 전용으로 설정 (Windows)
+            if os.name == 'nt':  # Windows
+                os.chmod(temp_path, stat.S_IREAD)
+            else:  # Unix/Linux
+                os.chmod(temp_path, 0o444)
+            
+            # 읽기 전용 파일에 쓰기 시도
+            result = save_restaurants_data(test_data, temp_path)
+            # 권한 오류로 인해 저장 실패해야 함
+            assert result is False
+        finally:
+            # 파일 권한 복원 후 삭제
+            try:
+                if os.name == 'nt':
+                    os.chmod(temp_path, stat.S_IWRITE)
+                else:
+                    os.chmod(temp_path, 0o644)
+                os.unlink(temp_path)
+            except:
+                pass
 
 
 class TestValidateRestaurantData:
