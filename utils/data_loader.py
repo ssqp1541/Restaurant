@@ -17,9 +17,11 @@
     True
 """
 import json
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from utils.logger import get_logger
+from utils.security import sanitize_path, validate_file_path
 
 # 로거 초기화
 logger = get_logger('restaurant_app.data_loader')
@@ -36,7 +38,13 @@ def load_restaurants_data(file_path: str = 'data/restaurants.json') -> List[Dict
         매장 데이터 리스트
     """
     try:
-        data_file = Path(file_path)
+        # 파일 경로 검증 (N5.2: 파일 접근 보안)
+        normalized_path = sanitize_path(file_path, base_dir=os.getcwd())
+        if normalized_path is None:
+            logger.warning(f"안전하지 않은 파일 경로: {file_path}")
+            return []
+        
+        data_file = normalized_path
         if not data_file.exists():
             logger.warning(f"파일을 찾을 수 없습니다: {file_path}")
             return []
@@ -69,7 +77,13 @@ def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = 'data/res
         저장 성공 여부
     """
     try:
-        data_file = Path(file_path)
+        # 파일 경로 검증 (N5.2: 파일 접근 보안)
+        normalized_path = sanitize_path(file_path, base_dir=os.getcwd())
+        if normalized_path is None:
+            logger.error(f"안전하지 않은 파일 경로: {file_path}")
+            return False
+        
+        data_file = normalized_path
         data_file.parent.mkdir(parents=True, exist_ok=True)
         
         logger.debug(f"데이터 파일 저장 시작: {file_path} ({len(data)}개 매장)")
