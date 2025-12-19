@@ -190,13 +190,18 @@ def validate_restaurants_data_list(data: List[Dict[str, Any]]) -> Tuple[bool, Li
     return len(errors) == 0, errors
 
 
-def add_restaurant(data: List[Dict[str, Any]], restaurant: Dict[str, Any]) -> bool:
+def add_restaurant(
+    data: List[Dict[str, Any]], 
+    restaurant: Dict[str, Any],
+    allow_duplicate: bool = True
+) -> bool:
     """
     새로운 매장을 데이터에 추가합니다.
     
     Args:
         data: 기존 매장 데이터 리스트
         restaurant: 추가할 매장 데이터
+        allow_duplicate: 중복 매장명 허용 여부 (기본값: True)
         
     Returns:
         추가 성공 여부
@@ -206,6 +211,14 @@ def add_restaurant(data: List[Dict[str, Any]], restaurant: Dict[str, Any]) -> bo
         return False
     
     restaurant_name = restaurant.get('name', 'Unknown')
+    
+    # 중복 체크 (allow_duplicate가 False인 경우)
+    if not allow_duplicate:
+        existing = get_restaurant_by_name(data, restaurant_name)
+        if existing is not None:
+            logger.warning(f"중복 매장명으로 인한 추가 실패: {restaurant_name}")
+            return False
+    
     logger.info(f"매장 추가: {restaurant_name}")
     data.append(restaurant)
     return True
