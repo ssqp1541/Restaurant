@@ -1,6 +1,20 @@
 """
-데이터 로딩 및 처리 유틸리티
-Python으로 매장 데이터를 관리하고 처리하는 함수들
+데이터 로딩 및 처리 유틸리티 모듈
+
+이 모듈은 매장 데이터를 JSON 파일에서 로드하고, 저장하며, 검증하는 기능을 제공합니다.
+
+주요 기능:
+- JSON 파일에서 매장 데이터 로드
+- 매장 데이터를 JSON 파일에 저장
+- 매장 데이터 유효성 검증
+- 매장 추가 및 검색
+
+사용 예시:
+    >>> from utils.data_loader import load_restaurants_data, add_restaurant
+    >>> restaurants = load_restaurants_data('data/restaurants.json')
+    >>> new_restaurant = {"name": "새 매장", "address": "주소"}
+    >>> add_restaurant(restaurants, new_restaurant)
+    True
 """
 import json
 from pathlib import Path
@@ -76,6 +90,56 @@ def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = 'data/res
         return False
 
 
+def _validate_blog_links(blog_links: Any) -> bool:
+    """
+    블로그 링크 배열의 유효성을 검사합니다. (내부 헬퍼 함수)
+    
+    Args:
+        blog_links: 검사할 블로그 링크 데이터
+        
+    Returns:
+        유효성 여부
+    """
+    if not isinstance(blog_links, list):
+        return False
+    if len(blog_links) > 0:
+        for blog in blog_links:
+            if not isinstance(blog, dict) or 'url' not in blog:
+                return False
+    return True
+
+
+def _validate_menu_images(menu_images: Any) -> bool:
+    """
+    메뉴 이미지 배열의 유효성을 검사합니다. (내부 헬퍼 함수)
+    
+    Args:
+        menu_images: 검사할 메뉴 이미지 데이터
+        
+    Returns:
+        유효성 여부
+    """
+    return isinstance(menu_images, list)
+
+
+def _validate_reviews(reviews: Any) -> bool:
+    """
+    후기 배열의 유효성을 검사합니다. (내부 헬퍼 함수)
+    
+    Args:
+        reviews: 검사할 후기 데이터
+        
+    Returns:
+        유효성 여부
+    """
+    if not isinstance(reviews, list):
+        return False
+    for review in reviews:
+        if not isinstance(review, dict) or 'text' not in review:
+            return False
+    return True
+
+
 def validate_restaurant_data(restaurant: Dict[str, Any]) -> bool:
     """
     매장 데이터의 유효성을 검사합니다.
@@ -84,37 +148,71 @@ def validate_restaurant_data(restaurant: Dict[str, Any]) -> bool:
         restaurant: 검사할 매장 데이터
         
     Returns:
-        유효성 여부
+        유효성 여부 (True: 유효함, False: 유효하지 않음)
     """
+    # 필수 필드 검증
     required_fields = ['name']
-    
     for field in required_fields:
         if field not in restaurant:
             return False
     
     # 블로그 링크 검증
     if 'blogLinks' in restaurant:
-        if not isinstance(restaurant['blogLinks'], list):
+        if not _validate_blog_links(restaurant['blogLinks']):
             return False
-        if len(restaurant['blogLinks']) > 0:
-            for blog in restaurant['blogLinks']:
-                if not isinstance(blog, dict) or 'url' not in blog:
-                    return False
     
     # 메뉴 이미지 검증
     if 'menuImages' in restaurant:
-        if not isinstance(restaurant['menuImages'], list):
+        if not _validate_menu_images(restaurant['menuImages']):
             return False
     
     # 후기 검증
     if 'reviews' in restaurant:
-        if not isinstance(restaurant['reviews'], list):
+        if not _validate_reviews(restaurant['reviews']):
             return False
-        for review in restaurant['reviews']:
-            if not isinstance(review, dict) or 'text' not in review:
-                return False
     
     return True
+
+
+def _validate_blog_links_with_error(blog_links: Any) -> Tuple[bool, Optional[str]]:
+    """
+    블로그 링크 배열의 유효성을 검사하고 에러 메시지를 반환합니다. (내부 헬퍼 함수)
+    
+    Args:
+        blog_links: 검사할 블로그 링크 데이터
+        
+    Returns:
+        (유효성 여부, 에러 메시지) 튜플
+    """
+    if not isinstance(blog_links, list):
+        return False, "blogLinks는 배열이어야 합니다."
+    if len(blog_links) > 0:
+        for idx, blog in enumerate(blog_links):
+            if not isinstance(blog, dict):
+                return False, f"blogLinks[{idx}]는 객체여야 합니다."
+            if 'url' not in blog:
+                return False, f"blogLinks[{idx}]에 'url' 필드가 필요합니다."
+    return True, None
+
+
+def _validate_reviews_with_error(reviews: Any) -> Tuple[bool, Optional[str]]:
+    """
+    후기 배열의 유효성을 검사하고 에러 메시지를 반환합니다. (내부 헬퍼 함수)
+    
+    Args:
+        reviews: 검사할 후기 데이터
+        
+    Returns:
+        (유효성 여부, 에러 메시지) 튜플
+    """
+    if not isinstance(reviews, list):
+        return False, "reviews는 배열이어야 합니다."
+    for idx, review in enumerate(reviews):
+        if not isinstance(review, dict):
+            return False, f"reviews[{idx}]는 객체여야 합니다."
+        if 'text' not in review:
+            return False, f"reviews[{idx}]에 'text' 필드가 필요합니다."
+    return True, None
 
 
 def validate_restaurant_data_with_error(restaurant: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
@@ -126,24 +224,20 @@ def validate_restaurant_data_with_error(restaurant: Dict[str, Any]) -> Tuple[boo
         
     Returns:
         (유효성 여부, 에러 메시지) 튜플
+        - 유효한 경우: (True, None)
+        - 유효하지 않은 경우: (False, 에러 메시지 문자열)
     """
-    required_fields = ['name']
-    
     # 필수 필드 검증
+    required_fields = ['name']
     for field in required_fields:
         if field not in restaurant:
             return False, f"필수 필드 '{field}'가 누락되었습니다."
     
     # 블로그 링크 검증
     if 'blogLinks' in restaurant:
-        if not isinstance(restaurant['blogLinks'], list):
-            return False, "blogLinks는 배열이어야 합니다."
-        if len(restaurant['blogLinks']) > 0:
-            for idx, blog in enumerate(restaurant['blogLinks']):
-                if not isinstance(blog, dict):
-                    return False, f"blogLinks[{idx}]는 객체여야 합니다."
-                if 'url' not in blog:
-                    return False, f"blogLinks[{idx}]에 'url' 필드가 필요합니다."
+        is_valid, error_msg = _validate_blog_links_with_error(restaurant['blogLinks'])
+        if not is_valid:
+            return False, error_msg
     
     # 메뉴 이미지 검증
     if 'menuImages' in restaurant:
@@ -152,13 +246,9 @@ def validate_restaurant_data_with_error(restaurant: Dict[str, Any]) -> Tuple[boo
     
     # 후기 검증
     if 'reviews' in restaurant:
-        if not isinstance(restaurant['reviews'], list):
-            return False, "reviews는 배열이어야 합니다."
-        for idx, review in enumerate(restaurant['reviews']):
-            if not isinstance(review, dict):
-                return False, f"reviews[{idx}]는 객체여야 합니다."
-            if 'text' not in review:
-                return False, f"reviews[{idx}]에 'text' 필드가 필요합니다."
+        is_valid, error_msg = _validate_reviews_with_error(restaurant['reviews'])
+        if not is_valid:
+            return False, error_msg
     
     return True, None
 
@@ -224,7 +314,7 @@ def add_restaurant(
     return True
 
 
-def get_restaurant_by_name(data: List[Dict[str, Any]], name: str):
+def get_restaurant_by_name(data: List[Dict[str, Any]], name: str) -> Optional[Dict[str, Any]]:
     """
     이름으로 매장을 검색합니다.
     
@@ -233,7 +323,7 @@ def get_restaurant_by_name(data: List[Dict[str, Any]], name: str):
         name: 검색할 매장 이름
         
     Returns:
-        매장 데이터 또는 None
+        매장 데이터 또는 None (매장을 찾지 못한 경우)
     """
     for restaurant in data:
         if restaurant.get('name') == name:

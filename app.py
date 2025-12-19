@@ -1,8 +1,22 @@
 """
 천안시 맛집 안내 웹 애플리케이션
 Flask 기반 Python 웹 서버
+
+이 모듈은 천안시 맛집 정보를 제공하는 웹 애플리케이션의 메인 진입점입니다.
+주요 기능:
+- 메인 페이지 렌더링
+- REST API를 통한 매장 데이터 제공
+- 이미지 파일 서빙
+- 에러 처리 (404, 500)
+
+사용 방법:
+    python app.py
+
+서버가 시작되면 http://localhost:5000 에서 접속할 수 있습니다.
 """
-from flask import Flask, render_template, jsonify, send_from_directory
+from typing import Tuple
+from flask import Flask, render_template, jsonify, send_from_directory, Response
+from werkzeug.exceptions import NotFound, InternalServerError
 from utils.data_loader import load_restaurants_data
 from utils.logger import setup_logger
 
@@ -11,43 +25,109 @@ logger = setup_logger('restaurant_app', log_file='app.log')
 
 app = Flask(__name__)
 
+# 데이터 캐싱을 위한 전역 변수
+_restaurants_cache: list = []
+_cache_file_path: str = 'data/restaurants.json'
+
+
+def _get_restaurants_data() -> list:
+    """
+    캐시된 매장 데이터를 반환하거나 로드합니다.
+    
+    Returns:
+        매장 데이터 리스트
+    """
+    global _restaurants_cache, _cache_file_path
+    
+    # 캐시가 비어있거나 파일이 변경되었는지 확인
+    if not _restaurants_cache:
+        _restaurants_cache = load_restaurants_data(_cache_file_path)
+        logger.debug(f"데이터 캐시 로드: {len(_restaurants_cache)}개 매장")
+    
+    return _restaurants_cache
+
+
 @app.route('/')
-def index():
-    """메인 페이지"""
+def index() -> str:
+    """
+    메인 페이지 라우트
+    
+    Returns:
+        렌더링된 HTML 템플릿
+    """
     logger.info("메인 페이지 요청")
-    restaurants = load_restaurants_data('data/restaurants.json')
+    restaurants = _get_restaurants_data()
     logger.debug(f"메인 페이지 렌더링: {len(restaurants)}개 매장")
     return render_template('index.html', restaurants=restaurants)
 
+
 @app.route('/api/restaurants')
-def api_restaurants():
-    """REST API: 매장 데이터 반환"""
+def api_restaurants() -> Response:
+    """
+    REST API: 매장 데이터 반환
+    
+    Returns:
+        JSON 형식의 매장 데이터 리스트
+    """
     logger.info("API 엔드포인트 요청: /api/restaurants")
-    restaurants = load_restaurants_data('data/restaurants.json')
+    restaurants = _get_restaurants_data()
     logger.debug(f"API 응답: {len(restaurants)}개 매장")
     return jsonify(restaurants)
 
+
 @app.route('/images/<path:filename>')
-def serve_images(filename):
-    """이미지 파일 서빙"""
+def serve_images(filename: str) -> Response:
+    """
+    이미지 파일 서빙
+    
+    Args:
+        filename: 이미지 파일 경로
+        
+    Returns:
+        이미지 파일 응답 또는 404 에러
+    """
     return send_from_directory('images', filename)
 
+
 @app.route('/test-error-500')
-def test_error_500():
-    """500 에러 테스트용 라우트"""
+def test_error_500() -> None:
+    """
+    500 에러 테스트용 라우트
+    
+    Raises:
+        Exception: 테스트용 500 에러
+    """
     logger.warning("500 에러 테스트 라우트 호출됨")
     # 의도적으로 500 에러 발생
     raise Exception("테스트용 500 에러")
 
+
 @app.errorhandler(404)
-def not_found(error):
-    """404 에러 처리"""
+def not_found(error: NotFound) -> Tuple[str, int]:
+    """
+    404 에러 핸들러
+    
+    Args:
+        error: NotFound 예외 객체
+        
+    Returns:
+        렌더링된 에러 페이지와 404 상태 코드
+    """
     logger.warning(f"404 에러 발생: {error}")
     return render_template('error.html', error_code=404, message='페이지를 찾을 수 없습니다.'), 404
 
+
 @app.errorhandler(500)
-def internal_error(error):
-    """500 에러 처리"""
+def internal_error(error: InternalServerError) -> Tuple[str, int]:
+    """
+    500 에러 핸들러
+    
+    Args:
+        error: InternalServerError 예외 객체
+        
+    Returns:
+        렌더링된 에러 페이지와 500 상태 코드
+    """
     logger.error(f"500 에러 발생: {error}", exc_info=True)
     return render_template('error.html', error_code=500, message='서버 오류가 발생했습니다.'), 500
 
