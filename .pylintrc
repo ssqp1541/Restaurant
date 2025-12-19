@@ -1,0 +1,41 @@
+[MASTER]
+# Python 코드 분석 설정
+ignore=tests,venv,.venv,htmlcov,.pytest_cache
+jobs=0
+suggestion-mode=yes
+
+[MESSAGES CONTROL]
+# 경고 메시지 제어
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-instance-attributes,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    import-outside-toplevel
+
+[FORMAT]
+# 코드 포맷 설정
+max-line-length=120
+indent-string='    '
+
+[DESIGN]
+# 설계 관련 설정
+max-args=7
+max-locals=20
+max-returns=6
+max-branches=12
+max-statements=50
+max-parents=7
+max-attributes=10
+min-public-methods=0
+max-public-methods=20
+
+[REFACTORING]
+# 리팩토링 관련 설정
+max-nested-blocks=5
+
