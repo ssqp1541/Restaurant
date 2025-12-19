@@ -24,6 +24,7 @@ from utils.logger import get_logger
 from utils.security import sanitize_path, validate_file_path
 from utils.file_utils import validate_and_normalize_path
 from utils.constants import DEFAULT_DATA_PATH
+from exceptions.restaurant_exceptions import RestaurantDataError, FileAccessError, ValidationError
 
 # 로거 초기화
 logger = get_logger('restaurant_app.data_loader')
@@ -60,11 +61,21 @@ def load_restaurants_data(file_path: str = DEFAULT_DATA_PATH) -> List[Dict[str, 
         return result
     
     except json.JSONDecodeError as e:
-        logger.error(f"JSON 형식 오류: {file_path} - {e}", exc_info=True)
-        return []
+        error_msg = f"JSON 형식 오류: {file_path}"
+        logger.error(f"{error_msg} - {e}", exc_info=True)
+        raise RestaurantDataError(error_msg, error_code="JSON_DECODE_ERROR", details={"file_path": file_path}) from e
+    except FileNotFoundError as e:
+        error_msg = f"파일을 찾을 수 없습니다: {file_path}"
+        logger.error(error_msg, exc_info=True)
+        raise FileAccessError(error_msg, file_path=file_path, error_code="FILE_NOT_FOUND", original_error=e) from e
+    except PermissionError as e:
+        error_msg = f"파일 읽기 권한이 없습니다: {file_path}"
+        logger.error(error_msg, exc_info=True)
+        raise FileAccessError(error_msg, file_path=file_path, error_code="PERMISSION_DENIED", original_error=e) from e
     except Exception as e:
-        logger.error(f"데이터 로드 중 예외 발생: {file_path} - {e}", exc_info=True)
-        return []
+        error_msg = f"데이터 로드 중 예외 발생: {file_path}"
+        logger.error(f"{error_msg} - {e}", exc_info=True)
+        raise RestaurantDataError(error_msg, error_code="LOAD_ERROR", details={"file_path": file_path}) from e
 
 
 def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = DEFAULT_DATA_PATH) -> bool:
@@ -96,14 +107,17 @@ def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = DEFAULT_D
         return True
     
     except PermissionError as e:
-        logger.error(f"파일 저장 권한 오류: {file_path} - {e}", exc_info=True)
-        return False
+        error_msg = f"파일 저장 권한 오류: {file_path}"
+        logger.error(f"{error_msg} - {e}", exc_info=True)
+        raise FileAccessError(error_msg, file_path=file_path, error_code="PERMISSION_DENIED", original_error=e) from e
     except OSError as e:
-        logger.error(f"파일 시스템 오류: {file_path} - {e}", exc_info=True)
-        return False
+        error_msg = f"파일 시스템 오류: {file_path}"
+        logger.error(f"{error_msg} - {e}", exc_info=True)
+        raise FileAccessError(error_msg, file_path=file_path, error_code="OS_ERROR", original_error=e) from e
     except Exception as e:
-        logger.error(f"데이터 저장 중 예외 발생: {file_path} - {e}", exc_info=True)
-        return False
+        error_msg = f"데이터 저장 중 예외 발생: {file_path}"
+        logger.error(f"{error_msg} - {e}", exc_info=True)
+        raise RestaurantDataError(error_msg, error_code="SAVE_ERROR", details={"file_path": file_path}) from e
 
 
 def _validate_blog_links(blog_links: Any) -> bool:

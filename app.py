@@ -28,6 +28,7 @@ from utils.constants import (
     SERVER_CONFIG
 )
 from factories.service_factory import ServiceFactory
+from exceptions.restaurant_exceptions import RestaurantDataError, FileAccessError, ValidationError
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -148,9 +149,17 @@ def api_restaurants() -> Response:
             "count": len(restaurants)
         }
         return jsonify(response_data), 200
-    except Exception as e:
+    except (RestaurantDataError, FileAccessError) as e:
         metrics_service.increment_error()
         logger.error(f"API 데이터 로드 중 오류 발생: {e}", exc_info=True)
+        return _create_error_response(
+            str(e),
+            500,
+            getattr(e, 'error_code', ERROR_CODES['DATA_LOAD_FAILED'])
+        )
+    except Exception as e:
+        metrics_service.increment_error()
+        logger.error(f"API 데이터 로드 중 예상치 못한 오류 발생: {e}", exc_info=True)
         return _create_error_response(
             ERROR_MESSAGES['DATA_LOAD_FAILED'],
             500,
