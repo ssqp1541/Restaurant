@@ -12,7 +12,7 @@ from utils.logger import get_logger
 logger = get_logger('restaurant_app.security')
 
 
-def sanitize_path(file_path: str, base_dir: str = None, allow_absolute: bool = False) -> Optional[Path]:
+def sanitize_path(file_path: str, base_dir: Optional[str] = None, allow_absolute: bool = False) -> Optional[Path]:
     """
     파일 경로를 검증하고 정규화합니다. (경로 탐색 공격 방지)
     
@@ -63,7 +63,7 @@ def sanitize_path(file_path: str, base_dir: str = None, allow_absolute: bool = F
         return None
 
 
-def validate_file_path(file_path: str, allowed_extensions: list = None, base_dir: str = None) -> bool:
+def validate_file_path(file_path: str, allowed_extensions: Optional[list[str]] = None, base_dir: Optional[str] = None) -> bool:
     """
     파일 경로의 유효성을 검증합니다.
     

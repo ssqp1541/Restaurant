@@ -14,7 +14,7 @@ Flask 기반 Python 웹 서버
 
 서버가 시작되면 http://localhost:5000 에서 접속할 수 있습니다.
 """
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable, Any, TypeVar, cast
 from functools import wraps
 from pathlib import Path
 from flask import Flask, render_template, jsonify, send_from_directory, Response
@@ -31,6 +31,8 @@ from utils.constants import (
     SERVER_CONFIG
 )
 
+F = TypeVar('F', bound=Callable[..., Any])
+
 # 로거 초기화
 logger = setup_logger('restaurant_app', log_file='app.log')
 
@@ -41,12 +43,19 @@ cache = get_cache()
 metrics = get_metrics()
 
 
-def _track_request_time(func):
+def _track_request_time(func: F) -> F:
     """
     요청 처리 시간을 추적하는 데코레이터 (N6.1)
+    
+    Args:
+        func: 추적할 함수
+        
+    Returns:
+        래핑된 함수
     """
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        from time import time
         start_time = time()
         try:
             response = func(*args, **kwargs)
@@ -56,10 +65,10 @@ def _track_request_time(func):
         except Exception as e:
             metrics.increment_error()
             raise
-    return wrapper
+    return cast(F, wrapper)
 
 
-def _get_restaurants_data() -> list:
+def _get_restaurants_data() -> list[dict[str, Any]]:
     """
     캐시된 매장 데이터를 반환하거나 로드합니다.
     
@@ -219,7 +228,7 @@ def not_found(error: NotFound) -> Tuple[str, int]:
 
 
 @app.errorhandler(400)
-def bad_request(error) -> Tuple[Response, int]:
+def bad_request(error: BadRequest) -> Tuple[Response, int]:
     """
     400 에러 핸들러 (API용)
     
