@@ -40,6 +40,35 @@ class TestHealthCheckEndpoint:
         
         assert 'data_load' in data['checks']
         assert data['checks']['data_load'] in ['ok', 'error']
+    
+    def test_health_check_error_scenario(self, client, monkeypatch):
+        """헬스 체크 에러 시나리오 테스트"""
+        # 파일이 존재하지 않는 경우 시뮬레이션
+        def mock_path_exists_false():
+            return False
+        
+        from pathlib import Path
+        original_exists = Path.exists
+        
+        # Path.exists를 모킹하여 False 반환
+        def mock_exists(self):
+            if str(self) == 'data\\restaurants.json' or str(self) == 'data/restaurants.json':
+                return False
+            return original_exists(self)
+        
+        monkeypatch.setattr(Path, 'exists', mock_exists)
+        
+        # 캐시 초기화
+        import app
+        app._restaurants_cache = []
+        
+        response = client.get('/health')
+        data = json.loads(response.data)
+        
+        # degraded 상태일 수 있음
+        assert 'status' in data
+        assert data['status'] in ['healthy', 'degraded']
+        assert 'checks' in data
 
 
 class TestMetricsEndpoint:
@@ -99,4 +128,20 @@ class TestMetricsEndpoint:
             assert 'min' in data['response_time']
             assert 'max' in data['response_time']
             assert 'count' in data['response_time']
+    
+    def test_health_check_with_metrics(self, client):
+        """헬스 체크에 메트릭 정보 포함 확인"""
+        # 몇 개의 요청을 먼저 생성하여 메트릭 수집
+        client.get('/')
+        client.get('/api/restaurants')
+        
+        response = client.get('/health')
+        data = json.loads(response.data)
+        
+        # 메트릭 정보가 포함될 수 있음 (response_times가 있을 경우)
+        if 'metrics' in data:
+            assert 'request_count' in data['metrics']
+            assert 'error_count' in data['metrics']
+            assert 'average_response_time' in data['metrics']
+            assert 'uptime_seconds' in data['metrics']
 

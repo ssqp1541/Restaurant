@@ -17,6 +17,7 @@ Flask 기반 Python 웹 서버
 from typing import Tuple, Dict, Any
 from time import time
 from functools import wraps
+from pathlib import Path
 from flask import Flask, render_template, jsonify, send_from_directory, Response, request
 from werkzeug.exceptions import NotFound, InternalServerError, BadRequest
 from utils.data_loader import load_restaurants_data

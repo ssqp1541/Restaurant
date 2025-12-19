@@ -41,7 +41,14 @@ class TestFlaskAppDataLoaderIntegration:
         
         # API를 통해 가져오기
         response = client.get('/api/restaurants')
-        api_data = json.loads(response.data)
+        assert response.status_code == 200
+        api_response = json.loads(response.data)
+        
+        # 표준화된 응답 형식 확인
+        assert 'success' in api_response
+        assert api_response['success'] is True
+        assert 'data' in api_response
+        api_data = api_response['data']
         
         # 두 데이터가 일치하는지 확인
         assert len(direct_data) == len(api_data)
@@ -109,7 +116,13 @@ class TestRealDataFileIntegration:
         response = client.get('/api/restaurants')
         assert response.status_code == 200
         
-        api_data = json.loads(response.data)
+        api_response = json.loads(response.data)
+        
+        # 표준화된 응답 형식 확인
+        assert 'success' in api_response
+        assert api_response['success'] is True
+        assert 'data' in api_response
+        api_data = api_response['data']
         
         # 데이터 일치 확인
         assert len(restaurants) == len(api_data)

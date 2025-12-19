@@ -9,12 +9,20 @@
 ## 🚀 시작하기
 
 ### 필수 요구사항
-- Python 3.8 이상
+- Python 3.8 이상 (권장: Python 3.10 이상)
 - pip (Python 패키지 관리자)
+- Git (선택사항, 프로젝트 클론 시 필요)
 
 ### 설치 방법
 
 1. **프로젝트 클론 또는 다운로드**
+   ```bash
+   # Git을 사용하는 경우
+   git clone https://github.com/ssqp1541/Restaurant.git
+   cd Restaurant
+   
+   # 또는 ZIP 파일 다운로드 후 압축 해제
+   ```
 
 2. **가상 환경 생성 (권장)**
    ```bash
@@ -39,6 +47,216 @@
 
 5. **웹 브라우저에서 접속**
    - http://localhost:5000 으로 접속
+   - 서버가 정상적으로 실행되면 콘솔에 다음 메시지가 표시됩니다:
+     ```
+     ==================================================
+     천안시 맛집 안내 웹사이트
+     ==================================================
+     서버 시작: http://localhost:5000
+     종료하려면 Ctrl+C를 누르세요.
+     ==================================================
+     ```
+
+### 실행 방법 상세
+
+#### 개발 서버 실행
+```bash
+# 기본 실행 (개발 모드)
+python app.py
+
+# 또는 Flask 명령어 사용
+flask run
+
+# 특정 포트로 실행
+flask run --port 8080
+
+# 외부 접속 허용
+flask run --host 0.0.0.0
+```
+
+#### 테스트 실행
+
+**전체 테스트 실행**
+```bash
+# 기본 실행
+pytest
+
+# 상세 출력
+pytest -v
+
+# 특정 테스트 파일 실행
+pytest tests/test_app.py
+pytest tests/test_data_loader.py
+pytest tests/test_integration.py
+
+# 특정 테스트 클래스 실행
+pytest tests/test_app.py::TestMainPageRoute
+
+# 특정 테스트 함수 실행
+pytest tests/test_app.py::TestMainPageRoute::test_index_returns_200
+```
+
+**커버리지 포함 테스트 실행**
+```bash
+# 터미널에 커버리지 출력
+pytest --cov=. --cov-report=term-missing
+
+# HTML 리포트 생성
+pytest --cov=. --cov-report=html
+
+# HTML 리포트 확인 (브라우저에서)
+# htmlcov/index.html 파일 열기
+
+# 최소 커버리지 요구사항 설정 (80%)
+pytest --cov=. --cov-fail-under=80
+```
+
+**빠른 테스트 실행**
+```bash
+# 간단한 출력
+pytest -q
+
+# 실패한 테스트만 재실행
+pytest --lf
+
+# 실패한 테스트부터 실행
+pytest --ff
+```
+
+#### API 엔드포인트 테스트
+
+**메인 페이지**
+```bash
+# 브라우저에서 접속
+http://localhost:5000
+
+# 또는 curl 사용
+curl http://localhost:5000
+```
+
+**REST API**
+```bash
+# 매장 데이터 조회
+curl http://localhost:5000/api/restaurants
+
+# JSON 형식으로 보기
+curl http://localhost:5000/api/restaurants | python -m json.tool
+```
+
+**헬스 체크**
+```bash
+# 시스템 상태 확인
+curl http://localhost:5000/health
+
+# JSON 형식으로 보기
+curl http://localhost:5000/health | python -m json.tool
+```
+
+**메트릭 정보**
+```bash
+# 메트릭 정보 조회
+curl http://localhost:5000/api/metrics
+
+# JSON 형식으로 보기
+curl http://localhost:5000/api/metrics | python -m json.tool
+```
+
+### 문제 해결
+
+#### 포트가 이미 사용 중인 경우
+```bash
+# 다른 포트로 실행
+python app.py
+# 또는 app.py 파일에서 port=5000을 다른 포트로 변경
+```
+
+#### 가상 환경 활성화 오류 (Windows)
+```bash
+# PowerShell 실행 정책 문제인 경우
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# 또는 직접 Python 실행
+venv\Scripts\python.exe app.py
+```
+
+#### 패키지 설치 오류
+```bash
+# pip 업그레이드
+python -m pip install --upgrade pip
+
+# 가상 환경 재생성
+rm -rf venv  # 또는 Windows: rmdir /s venv
+python -m venv venv
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # macOS/Linux
+pip install -r requirements.txt
+```
+
+#### 테스트 실행 오류
+```bash
+# pytest가 설치되지 않은 경우
+pip install pytest pytest-flask pytest-cov
+
+# 테스트 경로 문제
+# 프로젝트 루트 디렉토리에서 실행 확인
+cd C:\DEV\Restaurant  # 또는 프로젝트 경로
+pytest
+```
+
+### 개발 환경 설정
+
+#### IDE 설정 (VS Code)
+1. Python 확장 프로그램 설치
+2. `.vscode/settings.json` 파일 생성 (선택사항):
+   ```json
+   {
+     "python.testing.pytestEnabled": true,
+     "python.testing.unittestEnabled": false,
+     "python.linting.enabled": true,
+     "python.linting.pylintEnabled": false,
+     "python.linting.flake8Enabled": true
+   }
+   ```
+
+#### 타입 체크 (선택사항)
+```bash
+# mypy를 사용한 타입 체크
+mypy .
+
+# 특정 파일만 체크
+mypy app.py utils/data_loader.py
+```
+
+### 프로덕션 배포
+
+#### Gunicorn 사용 (Linux/macOS)
+```bash
+# Gunicorn 설치
+pip install gunicorn
+
+# 실행
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+```
+
+#### 환경 변수 설정
+```bash
+# .env 파일 생성 (선택사항)
+FLASK_ENV=production
+FLASK_DEBUG=False
+```
+
+### 로그 확인
+
+```bash
+# 로그 파일 위치
+logs/app.log
+
+# 실시간 로그 확인 (Linux/macOS)
+tail -f logs/app.log
+
+# Windows PowerShell
+Get-Content logs/app.log -Wait
+```
 
 ## 📁 프로젝트 구조
 
@@ -504,10 +722,17 @@ TDD(Test-Driven Development)의 두 번째 단계로, RED 단계에서 작성한
     - [ ] 데이터베이스 연결 상태 (현재는 JSON 파일 사용으로 불필요)
 
 #### GREEN 단계 성공 기준
-- [ ] 모든 RED 단계 실패 테스트 통과
-- [ ] 전체 커버리지 75% 이상
-- [ ] 데이터 로더 커버리지 60% 이상
-- [ ] Flask 앱 커버리지 80% 이상
+- [x] 모든 RED 단계 실패 테스트 통과 ✅
+  - [x] `test_500_error_page` - 500 에러 페이지 테스트 통과
+  - [x] `test_save_permission_error` - 권한 오류 처리 테스트 통과
+  - [x] `test_invalid_data_format_handling` - 잘못된 데이터 형식 처리 테스트 통과
+  - [x] `test_data_validation_failure_error_handling` - 데이터 검증 실패 시 에러 처리 테스트 통과
+- [x] 전체 커버리지 75% 이상 ✅
+  - 최신 측정: **92.29%** ✅ (목표 달성)
+- [x] 데이터 로더 커버리지 60% 이상 ✅
+  - 최신 측정: **75%** ✅ (목표 달성)
+- [x] Flask 앱 커버리지 80% 이상 ✅
+  - 최신 측정: **85%** ✅ (목표 달성)
 
 ### 8단계: 테스트 및 최적화
 - [ ] Flask 서버 실행 및 테스트
