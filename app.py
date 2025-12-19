@@ -27,9 +27,7 @@ from utils.constants import (
     ALLOWED_IMAGE_EXTENSIONS,
     SERVER_CONFIG
 )
-from services.restaurant_service import RestaurantService
-from services.metrics_service import MetricsService
-from services.health_check_service import HealthCheckService
+from factories.service_factory import ServiceFactory
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -38,10 +36,8 @@ logger = setup_logger('restaurant_app', log_file='app.log')
 
 app = Flask(__name__)
 
-# 서비스 레이어 초기화 (의존성 주입)
-restaurant_service = RestaurantService()
-metrics_service = MetricsService()
-health_check_service = HealthCheckService(restaurant_service)
+# 서비스 레이어 초기화 (Factory 패턴 사용)
+restaurant_service, metrics_service, health_check_service = ServiceFactory.create_all_services()
 
 
 def _track_request_time(func: F) -> F:

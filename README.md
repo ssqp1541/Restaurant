@@ -835,36 +835,36 @@ TDD(Test-Driven Development)의 세 번째 단계로, 테스트를 통과시키�
 #### 3단계: 아키텍처 개선
 
 ##### 3.1 레이어 분리
-- [ ] **프레젠테이션 레이어** (라우트 핸들러)
-  - [ ] Flask 라우트만 담당하도록 단순화
-  - [ ] 요청/응답 변환 로직 분리
+- [x] **프레젠테이션 레이어** (라우트 핸들러) ✅ 완료
+  - [x] Flask 라우트만 담당하도록 단순화 (서비스 레이어로 비즈니스 로직 분리)
+  - [x] 요청/응답 변환 로직 분리 (서비스 메서드 호출로 단순화)
 
-- [ ] **비즈니스 로직 레이어** (서비스)
-  - [ ] `RestaurantService`: 매장 데이터 관리
-  - [ ] `MetricsService`: 메트릭 수집 및 관리
-  - [ ] `HealthCheckService`: 헬스 체크 로직
+- [x] **비즈니스 로직 레이어** (서비스) ✅ 완료
+  - [x] `RestaurantService`: 매장 데이터 관리
+  - [x] `MetricsService`: 메트릭 수집 및 관리
+  - [x] `HealthCheckService`: 헬스 체크 로직
 
-- [ ] **데이터 접근 레이어** (리포지토리)
-  - [ ] `RestaurantRepository`: 데이터 로드/저장
-  - [ ] 파일 시스템 추상화
-  - [ ] 향후 데이터베이스 전환 용이하도록 설계
+- [x] **데이터 접근 레이어** (리포지토리) ✅ 완료
+  - [x] `RestaurantRepository`: 데이터 로드/저장 (`repositories/restaurant_repository.py`)
+  - [x] 파일 시스템 추상화 (`IDataRepository` 인터페이스)
+  - [x] 향후 데이터베이스 전환 용이하도록 설계 (인터페이스 기반)
 
 ##### 3.2 설계 패턴 적용
-- [ ] **Repository 패턴**
-  - [ ] 데이터 접근 로직 캡슐화
-  - [ ] 테스트 용이성 향상
+- [x] **Repository 패턴** ✅ 완료
+  - [x] 데이터 접근 로직 캡슐화 (`RestaurantRepository` 클래스)
+  - [x] 테스트 용이성 향상 (인터페이스 기반으로 모킹 가능)
 
-- [ ] **Factory 패턴**
-  - [ ] 서비스 객체 생성 팩토리
-  - [ ] 설정 기반 객체 생성
+- [x] **Factory 패턴** ✅ 완료
+  - [x] 서비스 객체 생성 팩토리 (`factories/service_factory.py`)
+  - [x] 설정 기반 객체 생성 (`ServiceFactory.create_all_services()`)
 
-- [ ] **Strategy 패턴**
-  - [ ] 검증 전략 분리
-  - [ ] 저장 전략 분리
+- [x] **Strategy 패턴** ✅ 완료
+  - [x] 검증 전략 분리 (`strategies/validation_strategy.py`)
+  - [x] 저장 전략 분리 (`strategies/storage_strategy.py`)
 
-- [ ] **Singleton 패턴** (필요시)
-  - [ ] 캐시 관리자 싱글톤
-  - [ ] 메트릭 수집기 싱글톤
+- [x] **Singleton 패턴** ✅ 완료 (이미 구현됨)
+  - [x] 캐시 관리자 싱글톤 (`utils/cache.py`의 `RestaurantCache`)
+  - [x] 메트릭 수집기 싱글톤 (`utils/metrics.py`의 `MetricsCollector`)
 
 #### 4단계: 코드 품질 향상
 
