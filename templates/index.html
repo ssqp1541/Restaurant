@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="2025년 충청남도 천안시 맛집 안내 - 추천 맛집, 대표 메뉴, 고객 후기">
+    <meta name="keywords" content="천안, 맛집, 천안시 맛집, 충청남도, 음식점">
+    <title>천안시 맛집 안내 | 2025</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">천안시 맛집 안내</h1>
+            <p class="subtitle">2025년 추천 맛집을 만나보세요</p>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="restaurants-grid">
+                {% if restaurants %}
+                    {% for restaurant in restaurants %}
+                    <div class="restaurant-card">
+                        <div class="restaurant-header">
+                            <h2 class="restaurant-name">{{ restaurant.name }}</h2>
+                            <div class="restaurant-info">
+                                {% if restaurant.address %}
+                                <span>📍 {{ restaurant.address }}</span>
+                                {% endif %}
+                                {% if restaurant.phone %}
+                                <span>📞 {{ restaurant.phone }}</span>
+                                {% endif %}
+                                {% if restaurant.hours %}
+                                <span>🕐 {{ restaurant.hours }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if restaurant.menuImages %}
+                        <div class="menu-section">
+                            <h3 class="menu-title">대표 메뉴</h3>
+                            <div class="menu-images">
+                                {% for image in restaurant.menuImages %}
+                                <img src="{{ url_for('serve_images', filename=image.replace('images/', '')) }}" 
+                                     alt="{{ restaurant.name }} 메뉴 {{ loop.index }}" 
+                                     class="menu-image"
+                                     data-restaurant="{{ loop.index0 }}"
+                                     data-image="{{ loop.index0 }}">
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if restaurant.blogLinks %}
+                        <div class="blog-section">
+                            <h3 class="blog-title">Naver 블로그 리뷰</h3>
+                            <div class="blog-links">
+                                {% for blog in restaurant.blogLinks %}
+                                <a href="{{ blog.url }}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer" 
+                                   class="blog-link">
+                                    {{ blog.title if blog.title else '블로그 리뷰 ' + loop.index|string }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if restaurant.reviews %}
+                        <div class="reviews-section">
+                            <h3 class="reviews-title">고객 후기</h3>
+                            {% for review in restaurant.reviews %}
+                            <div class="review-item">
+                                <div class="review-text">{{ review.text }}</div>
+                                {% if review.rating %}
+                                <div class="review-rating">{{ '⭐' * review.rating }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <h2>등록된 맛집이 없습니다</h2>
+                        <p>데이터를 추가해주세요.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 천안시 맛집 안내. 모든 권리 보유.</p>
+            <p class="disclaimer">※ 매장 정보는 변경될 수 있으니 방문 전 확인 바랍니다.</p>
+        </div>
+    </footer>
+
+    <!-- 이미지 라이트박스 모달 -->
+    <div id="image-modal" class="modal">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modal-image" alt="메뉴 이미지">
+        <div class="modal-caption"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
+

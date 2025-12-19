@@ -1,0 +1,120 @@
+[
+  {
+    "name": "예시 맛집 1",
+    "address": "충청남도 천안시 동남구 예시로 123",
+    "phone": "041-123-4567",
+    "hours": "11:00 - 22:00",
+    "blogLinks": [
+      {
+        "url": "https://blog.naver.com/example1",
+        "title": "맛집 탐방기 1"
+      },
+      {
+        "url": "https://blog.naver.com/example2",
+        "title": "천안 맛집 추천"
+      },
+      {
+        "url": "https://blog.naver.com/example3",
+        "title": "맛있는 식당 후기"
+      }
+    ],
+    "menuImages": [
+      "images/restaurants/restaurant1/menu1.jpg",
+      "images/restaurants/restaurant1/menu2.jpg",
+      "images/restaurants/restaurant1/menu3.jpg"
+    ],
+    "reviews": [
+      {
+        "text": "정말 맛있었어요! 서비스도 좋고 분위기도 좋습니다.",
+        "rating": 5
+      },
+      {
+        "text": "가성비 좋은 맛집입니다. 친구들과 자주 방문해요.",
+        "rating": 4
+      },
+      {
+        "text": "대표 메뉴가 정말 훌륭합니다. 강력 추천!",
+        "rating": 5
+      }
+    ]
+  },
+  {
+    "name": "예시 맛집 2",
+    "address": "충청남도 천안시 서북구 예시대로 456",
+    "phone": "041-234-5678",
+    "hours": "10:00 - 21:00",
+    "blogLinks": [
+      {
+        "url": "https://blog.naver.com/example4",
+        "title": "천안 맛집 리뷰"
+      },
+      {
+        "url": "https://blog.naver.com/example5",
+        "title": "추천 맛집 후기"
+      },
+      {
+        "url": "https://blog.naver.com/example6",
+        "title": "맛집 탐방"
+      }
+    ],
+    "menuImages": [
+      "images/restaurants/restaurant2/menu1.jpg",
+      "images/restaurants/restaurant2/menu2.jpg",
+      "images/restaurants/restaurant2/menu3.jpg"
+    ],
+    "reviews": [
+      {
+        "text": "분위기가 좋고 음식도 맛있어요. 재방문 의사 있습니다.",
+        "rating": 5
+      },
+      {
+        "text": "친절한 직원분들과 맛있는 음식으로 만족했습니다.",
+        "rating": 4
+      },
+      {
+        "text": "가족과 함께 방문했는데 모두 만족했어요.",
+        "rating": 5
+      }
+    ]
+  },
+  {
+    "name": "예시 맛집 3",
+    "address": "충청남도 천안시 동남구 예시길 789",
+    "phone": "041-345-6789",
+    "hours": "12:00 - 23:00",
+    "blogLinks": [
+      {
+        "url": "https://blog.naver.com/example7",
+        "title": "천안 맛집 소개"
+      },
+      {
+        "url": "https://blog.naver.com/example8",
+        "title": "맛집 후기"
+      },
+      {
+        "url": "https://blog.naver.com/example9",
+        "title": "추천 식당"
+      }
+    ],
+    "menuImages": [
+      "images/restaurants/restaurant3/menu1.jpg",
+      "images/restaurants/restaurant3/menu2.jpg",
+      "images/restaurants/restaurant3/menu3.jpg"
+    ],
+    "reviews": [
+      {
+        "text": "정말 맛있는 음식과 좋은 서비스로 만족했습니다.",
+        "rating": 5
+      },
+      {
+        "text": "가격 대비 훌륭한 맛집입니다. 추천합니다!",
+        "rating": 4
+      },
+      {
+        "text": "분위기 좋고 음식도 맛있어서 자주 방문합니다.",
+        "rating": 5
+      }
+    ]
+  }
+]
+
