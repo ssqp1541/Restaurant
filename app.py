@@ -14,32 +14,31 @@ Flask 기반 Python 웹 서버
 
 서버가 시작되면 http://localhost:5000 에서 접속할 수 있습니다.
 """
-from typing import Tuple, Dict, Any
-from time import time
+from typing import Tuple, Optional
 from functools import wraps
 from pathlib import Path
-from flask import Flask, render_template, jsonify, send_from_directory, Response, request
+from flask import Flask, render_template, jsonify, send_from_directory, Response
 from werkzeug.exceptions import NotFound, InternalServerError, BadRequest
-from utils.data_loader import load_restaurants_data
+from utils.cache import get_cache
+from utils.metrics import get_metrics
 from utils.logger import setup_logger
-from utils.security import sanitize_path, validate_file_path
+from utils.security import validate_file_path
+from utils.constants import (
+    DEFAULT_DATA_PATH,
+    ERROR_MESSAGES,
+    ERROR_CODES,
+    ALLOWED_IMAGE_EXTENSIONS,
+    SERVER_CONFIG
+)
 
 # 로거 초기화
 logger = setup_logger('restaurant_app', log_file='app.log')
 
 app = Flask(__name__)
 
-# 데이터 캐싱을 위한 전역 변수
-_restaurants_cache: list = []
-_cache_file_path: str = 'data/restaurants.json'
-
-# 메트릭 수집을 위한 전역 변수 (N6.1)
-_metrics: Dict[str, Any] = {
-    'request_count': 0,
-    'error_count': 0,
-    'response_times': [],
-    'start_time': time()
-}
+# 싱글톤 인스턴스 초기화
+cache = get_cache()
+metrics = get_metrics()
 
 
 def _track_request_time(func):
@@ -52,13 +51,10 @@ def _track_request_time(func):
         try:
             response = func(*args, **kwargs)
             elapsed_time = time() - start_time
-            _metrics['response_times'].append(elapsed_time)
-            # 최근 100개만 유지 (메모리 효율성)
-            if len(_metrics['response_times']) > 100:
-                _metrics['response_times'] = _metrics['response_times'][-100:]
+            metrics.add_response_time(elapsed_time)
             return response
         except Exception as e:
-            _metrics['error_count'] += 1
+            metrics.increment_error()
             raise
     return wrapper
 
@@ -70,14 +66,7 @@ def _get_restaurants_data() -> list:
     Returns:
         매장 데이터 리스트
     """
-    global _restaurants_cache, _cache_file_path
-    
-    # 캐시가 비어있거나 파일이 변경되었는지 확인
-    if not _restaurants_cache:
-        _restaurants_cache = load_restaurants_data(_cache_file_path)
-        logger.debug(f"데이터 캐시 로드: {len(_restaurants_cache)}개 매장")
-    
-    return _restaurants_cache
+    return cache.get_data()
 
 
 @app.route('/')
@@ -89,7 +78,7 @@ def index() -> str:
     Returns:
         렌더링된 HTML 템플릿 (Jinja2가 자동으로 XSS 방지)
     """
-    _metrics['request_count'] += 1
+    metrics.increment_request()
     logger.info("메인 페이지 요청")
     restaurants = _get_restaurants_data()
     logger.debug(f"메인 페이지 렌더링: {len(restaurants)}개 매장")
@@ -97,7 +86,11 @@ def index() -> str:
     return render_template('index.html', restaurants=restaurants)
 
 
-def _create_error_response(message: str, status_code: int, error_code: str = None) -> Tuple[Response, int]:
+def _create_error_response(
+    message: str,
+    status_code: int,
+    error_code: Optional[str] = None
+) -> Tuple[Response, int]:
     """
     표준화된 API 에러 응답을 생성합니다.
     
@@ -147,7 +140,7 @@ def api_restaurants() -> Response:
         }
     """
     try:
-        _metrics['request_count'] += 1
+        metrics.increment_request()
         logger.info("API 엔드포인트 요청: /api/restaurants")
         restaurants = _get_restaurants_data()
         logger.debug(f"API 응답: {len(restaurants)}개 매장")
@@ -160,12 +153,12 @@ def api_restaurants() -> Response:
         }
         return jsonify(response_data), 200
     except Exception as e:
-        _metrics['error_count'] += 1
+        metrics.increment_error()
         logger.error(f"API 데이터 로드 중 오류 발생: {e}", exc_info=True)
         return _create_error_response(
-            "데이터를 불러올 수 없습니다.",
+            ERROR_MESSAGES['DATA_LOAD_FAILED'],
             500,
-            "ERR_DATA_LOAD_FAILED"
+            ERROR_CODES['DATA_LOAD_FAILED']
         )
 
 
@@ -182,9 +175,13 @@ def serve_images(filename: str) -> Response:
         이미지 파일 응답 또는 404 에러
     """
     # 경로 탐색 공격 방지 (N5.1, N5.2)
-    if not validate_file_path(filename, allowed_extensions=['.jpg', '.jpeg', '.png', '.gif'], base_dir='images'):
+    if not validate_file_path(
+        filename,
+        allowed_extensions=ALLOWED_IMAGE_EXTENSIONS,
+        base_dir='images'
+    ):
         logger.warning(f"안전하지 않은 이미지 경로 접근 시도: {filename}")
-        raise BadRequest("안전하지 않은 파일 경로입니다.")
+        raise BadRequest(ERROR_MESSAGES['UNSAFE_FILE_PATH'])
     
     return send_from_directory('images', filename)
 
@@ -214,7 +211,11 @@ def not_found(error: NotFound) -> Tuple[str, int]:
         렌더링된 에러 페이지와 404 상태 코드
     """
     logger.warning(f"404 에러 발생: {error}")
-    return render_template('error.html', error_code=404, message='페이지를 찾을 수 없습니다.'), 404
+    return render_template(
+        'error.html',
+        error_code=404,
+        message=ERROR_MESSAGES['PAGE_NOT_FOUND']
+    ), 404
 
 
 @app.errorhandler(400)
@@ -230,9 +231,9 @@ def bad_request(error) -> Tuple[Response, int]:
     """
     logger.warning(f"400 에러 발생: {error}")
     return _create_error_response(
-        "잘못된 요청입니다.",
+        ERROR_MESSAGES['BAD_REQUEST'],
         400,
-        "ERR_BAD_REQUEST"
+        ERROR_CODES['BAD_REQUEST']
     )
 
 
@@ -247,9 +248,44 @@ def internal_error(error: InternalServerError) -> Tuple[str, int]:
     Returns:
         렌더링된 에러 페이지와 500 상태 코드
     """
-    _metrics['error_count'] += 1
+    metrics.increment_error()
     logger.error(f"500 에러 발생: {error}", exc_info=True)
-    return render_template('error.html', error_code=500, message='서버 오류가 발생했습니다.'), 500
+    return render_template(
+        'error.html',
+        error_code=500,
+        message=ERROR_MESSAGES['SERVER_ERROR']
+    ), 500
+
+
+def _check_filesystem_health() -> Tuple[str, bool]:
+    """
+    파일 시스템 접근 가능 여부를 확인합니다.
+    
+    Returns:
+        (상태 메시지, 건강 여부) 튜플
+    """
+    try:
+        test_file = Path(DEFAULT_DATA_PATH)
+        if test_file.exists():
+            return "ok", True
+        else:
+            return "warning", False
+    except Exception as e:
+        return f"error: {str(e)}", False
+
+
+def _check_data_load_health() -> Tuple[str, bool, int]:
+    """
+    데이터 로드 가능 여부를 확인합니다.
+    
+    Returns:
+        (상태 메시지, 건강 여부, 데이터 개수) 튜플
+    """
+    try:
+        restaurants = _get_restaurants_data()
+        return "ok", True, len(restaurants)
+    except Exception as e:
+        return f"error: {str(e)}", False, 0
 
 
 @app.route('/health')
@@ -267,35 +303,23 @@ def health_check() -> Tuple[Response, int]:
     overall_healthy = True
     
     # 파일 시스템 접근 가능 여부 확인 (N6.2)
-    try:
-        test_file = Path('data/restaurants.json')
-        if test_file.exists():
-            health_status["checks"]["filesystem"] = "ok"
-        else:
-            health_status["checks"]["filesystem"] = "warning"
-            overall_healthy = False
-    except Exception as e:
-        health_status["checks"]["filesystem"] = f"error: {str(e)}"
+    fs_status, fs_healthy = _check_filesystem_health()
+    health_status["checks"]["filesystem"] = fs_status
+    if not fs_healthy:
         overall_healthy = False
     
     # 데이터 로드 가능 여부 확인
-    try:
-        restaurants = _get_restaurants_data()
-        health_status["checks"]["data_load"] = "ok"
-        health_status["data_count"] = len(restaurants)
-    except Exception as e:
-        health_status["checks"]["data_load"] = f"error: {str(e)}"
+    data_status, data_healthy, data_count = _check_data_load_health()
+    health_status["checks"]["data_load"] = data_status
+    if not data_healthy:
         overall_healthy = False
+    else:
+        health_status["data_count"] = data_count
     
     # 메트릭 정보 추가 (N6.1)
-    if _metrics['response_times']:
-        avg_response_time = sum(_metrics['response_times']) / len(_metrics['response_times'])
-        health_status["metrics"] = {
-            "request_count": _metrics['request_count'],
-            "error_count": _metrics['error_count'],
-            "average_response_time": round(avg_response_time, 4),
-            "uptime_seconds": round(time() - _metrics['start_time'], 2)
-        }
+    health_metrics = metrics.get_health_metrics()
+    if health_metrics:
+        health_status["metrics"] = health_metrics
     
     status_code = 200 if overall_healthy else 503
     health_status["status"] = "healthy" if overall_healthy else "degraded"
@@ -311,22 +335,7 @@ def api_metrics() -> Response:
     Returns:
         JSON 형식의 메트릭 정보
     """
-    metrics_data = {
-        "request_count": _metrics['request_count'],
-        "error_count": _metrics['error_count'],
-        "error_rate": round(_metrics['error_count'] / max(_metrics['request_count'], 1), 4),
-        "uptime_seconds": round(time() - _metrics['start_time'], 2)
-    }
-    
-    if _metrics['response_times']:
-        response_times = _metrics['response_times']
-        metrics_data["response_time"] = {
-            "average": round(sum(response_times) / len(response_times), 4),
-            "min": round(min(response_times), 4),
-            "max": round(max(response_times), 4),
-            "count": len(response_times)
-        }
-    
+    metrics_data = metrics.get_metrics()
     return jsonify(metrics_data), 200
 
 if __name__ == '__main__':
@@ -345,5 +354,9 @@ if __name__ == '__main__':
     print("종료하려면 Ctrl+C를 누르세요.")
     print("=" * 50)
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(
+        debug=SERVER_CONFIG['DEBUG'],
+        host=SERVER_CONFIG['HOST'],
+        port=SERVER_CONFIG['PORT']
+    )
 

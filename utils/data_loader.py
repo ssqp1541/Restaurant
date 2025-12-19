@@ -22,12 +22,14 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from utils.logger import get_logger
 from utils.security import sanitize_path, validate_file_path
+from utils.file_utils import validate_and_normalize_path
+from utils.constants import DEFAULT_DATA_PATH
 
 # 로거 초기화
 logger = get_logger('restaurant_app.data_loader')
 
 
-def load_restaurants_data(file_path: str = 'data/restaurants.json') -> List[Dict[str, Any]]:
+def load_restaurants_data(file_path: str = DEFAULT_DATA_PATH) -> List[Dict[str, Any]]:
     """
     JSON 파일에서 매장 데이터를 로드합니다.
     
@@ -38,13 +40,8 @@ def load_restaurants_data(file_path: str = 'data/restaurants.json') -> List[Dict
         매장 데이터 리스트
     """
     try:
-        # 파일 경로 검증 (N5.2: 파일 접근 보안)
-        # 절대 경로인 경우 테스트 환경을 고려하여 허용
-        file_path_obj = Path(file_path)
-        file_path_str = str(file_path).lower()
-        # 임시 파일 경로인지 확인 (temp, tmp, appdata 포함)
-        allow_absolute = file_path_obj.is_absolute() and any(x in file_path_str for x in ['temp', 'tmp', 'appdata'])
-        normalized_path = sanitize_path(file_path, base_dir=os.getcwd(), allow_absolute=allow_absolute)
+        # 파일 경로 검증 및 정규화 (중복 코드 제거)
+        normalized_path, _ = validate_and_normalize_path(file_path)
         if normalized_path is None:
             logger.warning(f"안전하지 않은 파일 경로: {file_path}")
             return []
@@ -70,7 +67,7 @@ def load_restaurants_data(file_path: str = 'data/restaurants.json') -> List[Dict
         return []
 
 
-def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = 'data/restaurants.json') -> bool:
+def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = DEFAULT_DATA_PATH) -> bool:
     """
     매장 데이터를 JSON 파일에 저장합니다.
     
@@ -82,13 +79,8 @@ def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = 'data/res
         저장 성공 여부
     """
     try:
-        # 파일 경로 검증 (N5.2: 파일 접근 보안)
-        # 절대 경로인 경우 테스트 환경을 고려하여 허용
-        file_path_obj = Path(file_path)
-        file_path_str = str(file_path).lower()
-        # 임시 파일 경로인지 확인 (temp, tmp, appdata 포함)
-        allow_absolute = file_path_obj.is_absolute() and any(x in file_path_str for x in ['temp', 'tmp', 'appdata'])
-        normalized_path = sanitize_path(file_path, base_dir=os.getcwd(), allow_absolute=allow_absolute)
+        # 파일 경로 검증 및 정규화 (중복 코드 제거)
+        normalized_path, _ = validate_and_normalize_path(file_path)
         if normalized_path is None:
             logger.error(f"안전하지 않은 파일 경로: {file_path}")
             return False
