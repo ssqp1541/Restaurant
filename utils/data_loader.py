@@ -5,6 +5,10 @@ Python으로 매장 데이터를 관리하고 처리하는 함수들
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
+from utils.logger import get_logger
+
+# 로거 초기화
+logger = get_logger('restaurant_app.data_loader')
 
 
 def load_restaurants_data(file_path: str = 'data/restaurants.json') -> List[Dict[str, Any]]:
@@ -20,19 +24,22 @@ def load_restaurants_data(file_path: str = 'data/restaurants.json') -> List[Dict
     try:
         data_file = Path(file_path)
         if not data_file.exists():
-            print(f"경고: {file_path} 파일을 찾을 수 없습니다.")
+            logger.warning(f"파일을 찾을 수 없습니다: {file_path}")
             return []
         
+        logger.debug(f"데이터 파일 로드 시작: {file_path}")
         with open(data_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
-        return data if isinstance(data, list) else []
+        result = data if isinstance(data, list) else []
+        logger.info(f"데이터 로드 완료: {file_path} ({len(result)}개 매장)")
+        return result
     
     except json.JSONDecodeError as e:
-        print(f"경고: {file_path} 파일의 JSON 형식이 올바르지 않습니다: {e}")
+        logger.error(f"JSON 형식 오류: {file_path} - {e}", exc_info=True)
         return []
     except Exception as e:
-        print(f"오류: 데이터 로드 중 문제가 발생했습니다: {e}")
+        logger.error(f"데이터 로드 중 예외 발생: {file_path} - {e}", exc_info=True)
         return []
 
 
@@ -51,19 +58,21 @@ def save_restaurants_data(data: List[Dict[str, Any]], file_path: str = 'data/res
         data_file = Path(file_path)
         data_file.parent.mkdir(parents=True, exist_ok=True)
         
+        logger.debug(f"데이터 파일 저장 시작: {file_path} ({len(data)}개 매장)")
         with open(data_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         
+        logger.info(f"데이터 저장 완료: {file_path}")
         return True
     
     except PermissionError as e:
-        print(f"오류: 파일 저장 권한이 없습니다. {file_path}: {e}")
+        logger.error(f"파일 저장 권한 오류: {file_path} - {e}", exc_info=True)
         return False
     except OSError as e:
-        print(f"오류: 파일 시스템 오류가 발생했습니다. {file_path}: {e}")
+        logger.error(f"파일 시스템 오류: {file_path} - {e}", exc_info=True)
         return False
     except Exception as e:
-        print(f"오류: 데이터 저장 중 문제가 발생했습니다: {e}")
+        logger.error(f"데이터 저장 중 예외 발생: {file_path} - {e}", exc_info=True)
         return False
 
 
@@ -193,9 +202,11 @@ def add_restaurant(data: List[Dict[str, Any]], restaurant: Dict[str, Any]) -> bo
         추가 성공 여부
     """
     if not validate_restaurant_data(restaurant):
-        print("오류: 매장 데이터가 유효하지 않습니다.")
+        logger.warning(f"유효하지 않은 매장 데이터 추가 시도: {restaurant.get('name', 'Unknown')}")
         return False
     
+    restaurant_name = restaurant.get('name', 'Unknown')
+    logger.info(f"매장 추가: {restaurant_name}")
     data.append(restaurant)
     return True
 
